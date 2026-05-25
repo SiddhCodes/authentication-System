@@ -31,15 +31,32 @@ export const register = async (req, res) => {
     password: hashedPassword,
   });
 
-  const token = jwt.sign(
+  const accessToken = jwt.sign(
     {
       id: newUser._id,
     },
     config.JTW_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: "15m",
     },
   );
+
+  const refreshToken = jwt.sign(
+    {
+      id: newUser._id,
+    },
+    config.JTW_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 
   res.status(201).json({
     message: "User registered succesfully",
@@ -47,7 +64,7 @@ export const register = async (req, res) => {
       username: newUser.username,
       email: newUser.email,
     },
-    token,
+    accessToken,
   });
 };
 
@@ -70,5 +87,49 @@ export const getMe = async (req, res) => {
       username: user.username,
       email: user.email,
     },
+  });
+};
+
+export const refreshToken = (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({
+      message: "Refresh token not found",
+    });
+  }
+
+  const decoded = jwt.verify(refreshToken, config.JTW_SECRET);
+
+  const accessToken = jwt.sign(
+    {
+      id: decoded.id,
+    },
+    config.JTW_SECRET,
+    {
+      expiresIn: "15m",
+    },
+  );
+
+  const newRefreshToken = jwt.sign(
+    {
+      id: decoded.id,
+    },
+    config.JTW_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+
+  res.cookie("refreshToken", newRefreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(200).json({
+    message: "Access token refreshed succesfully",
+    accessToken,
   });
 };
