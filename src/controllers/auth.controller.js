@@ -2,7 +2,6 @@ import UserModel from "../models/user.model.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
-import { NetworkResources } from "inspector/promises";
 
 export const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -45,10 +44,31 @@ export const register = async (req, res) => {
   res.status(201).json({
     message: "User registered succesfully",
     user: {
-        username : newUser.username,
-        email: newUser.email,
+      username: newUser.username,
+      email: newUser.email,
     },
-    token
-  })
+    token,
+  });
+};
 
+export const getMe = async (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    res.status(401).json({
+      message: "token not found",
+    });
+  }
+
+  const decoded = jwt.verify(token, config.JTW_SECRET);
+
+  const user = await UserModel.findById(decoded.id);
+
+  res.status(200).json({
+    message: "user fetched succesfully",
+    user: {
+      username: user.username,
+      email: user.email,
+    },
+  });
 };
